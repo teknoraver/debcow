@@ -1,0 +1,6 @@
+/deb2extents
+*.tar
+*.deb
+*~
+*.swp
+*.swo
