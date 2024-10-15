@@ -2,16 +2,17 @@ package main
 
 import (
 	"os"
+
+	"github.com/teknoraver/deb2extents/debcow"
 )
 
 func main() {
-
-	aw, err := arpad(os.Stdin, os.Stdout)
+	aw, err := debcow.ArPadder(os.Stdin, os.Stdout)
 	if err != nil {
 		panic(err)
 	}
 
-	err = transtar(&aw.in, aw.out)
+	err = aw.TarTar()
 	if err != nil {
 		panic(err)
 	}
