@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"github.com/teknoraver/deb2extents/debcow"
+	"github.com/teknoraver/debcow/debcow"
 )
 
 func main() {

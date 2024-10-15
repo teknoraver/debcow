@@ -1,4 +1,4 @@
-module github.com/teknoraver/deb2extents
+module github.com/teknoraver/debcow
 
 go 1.18
 
