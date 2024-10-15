@@ -1,4 +1,4 @@
-package main
+package debcow
 
 import (
 	"errors"
@@ -21,21 +21,26 @@ func stripSpaces(buf []byte) string {
 	return string(buf[:i])
 }
 
-type arWriter struct {
+type WriteSeekCloser interface {
+	io.WriteCloser
+	io.WriteSeeker
+}
+
+type ArWriter struct {
 	io.WriteCloser
 
-	out     *os.File
+	out     WriteSeekCloser
 	pos     int64
 	oldsize int64
 	format  string
 	in      io.Reader
 }
 
-func (aw *arWriter) Write(p []byte) (n int, err error) {
+func (aw *ArWriter) Write(p []byte) (n int, err error) {
 	return aw.out.Write(p)
 }
 
-func (aw *arWriter) Close() error {
+func (aw *ArWriter) Close() error {
 	endpos, err := aw.out.Seek(0, io.SeekEnd)
 	if err != nil {
 		return err
@@ -60,7 +65,7 @@ func (aw *arWriter) Close() error {
 	return nil
 }
 
-func addPadding(out *os.File) error {
+func addPadding(out WriteSeekCloser) error {
 	pos, err := out.Seek(0, io.SeekCurrent)
 	if err != nil {
 		return err
@@ -79,13 +84,12 @@ func addPadding(out *os.File) error {
 	copy(buf[58:], "`\n")
 
 	out.Write(buf)
-	out.Truncate(int64(newpos))
-	out.Seek(0, io.SeekEnd)
+	out.Seek(int64(newpos), io.SeekCurrent)
 
 	return nil
 }
 
-func handleDataTar(aw *arWriter, algo string, in *os.File, out *os.File, buf []byte, size uint64) error {
+func (aw *ArWriter) handleDataTar(algo string, in io.Reader, out WriteSeekCloser, buf []byte, size uint64) error {
 	addPadding(out)
 
 	startpos, err := out.Seek(0, io.SeekCurrent)
@@ -114,7 +118,7 @@ func handleDataTar(aw *arWriter, algo string, in *os.File, out *os.File, buf []b
 	return nil
 }
 
-func arpad(in *os.File, out *os.File) (*arWriter, error) {
+func ArPadder(in io.Reader, out WriteSeekCloser) (*ArWriter, error) {
 	buf := make([]byte, 1024)
 
 	_, err := in.Read(buf[:8])
@@ -142,12 +146,12 @@ func arpad(in *os.File, out *os.File) (*arWriter, error) {
 		size, err := strconv.ParseUint(sizeStr, 10, 64)
 
 		if len(name) >= 8 && name[:8] == "data.tar" {
-			var aw arWriter
+			var aw ArWriter
 
 			aw.out = out
 			aw.oldsize = int64(size)
 
-			err = handleDataTar(&aw, name[8:], in, out, buf, size)
+			err = aw.handleDataTar(name[8:], in, out, buf, size)
 			if err != nil {
 				return nil, err
 			}

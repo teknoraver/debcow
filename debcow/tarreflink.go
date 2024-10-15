@@ -1,9 +1,8 @@
-package main
+package debcow
 
 import (
 	"archive/tar"
 	"io"
-	"os"
 )
 
 var spaces = make([]byte, 4096)
@@ -51,10 +50,9 @@ func addReflink(tw *tar.Writer, tr *tar.Reader, header *tar.Header, pos uint64) 
 	return nil
 }
 
-func transtar(in *io.Reader, out *os.File) error {
-
-	tr := tar.NewReader(*in)
-	tw := tar.NewWriter(out)
+func (aw *ArWriter) TarTar() error {
+	tr := tar.NewReader(aw.in)
+	tw := tar.NewWriter(aw.out)
 
 	for i := range spaces {
 		spaces[i] = ' '
@@ -68,7 +66,7 @@ func transtar(in *io.Reader, out *os.File) error {
 		header.Format = tar.FormatPAX
 
 		if header.Typeflag == tar.TypeReg && header.Size > 0 {
-			pos, err := out.Seek(0, os.SEEK_CUR)
+			pos, err := aw.out.Seek(0, io.SeekCurrent)
 			if err != nil {
 				return err
 			}
@@ -88,14 +86,14 @@ func transtar(in *io.Reader, out *os.File) error {
 
 	tw.Flush()
 
-	pos, err := out.Seek(0, os.SEEK_END)
+	pos, err := aw.out.Seek(0, io.SeekEnd)
 	if err != nil {
 		return err
 	}
 
 	/* Align to 4k */
-	pos = int64(round4k(uint64(pos)))
-	err = out.Truncate(pos)
+	pos2 := int64(round4k(uint64(pos)))
+	_, err = aw.out.Write(make([]byte, pos2-pos))
 	if err != nil {
 		return err
 	}
