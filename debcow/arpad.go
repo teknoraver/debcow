@@ -84,7 +84,7 @@ func addPadding(out WriteSeekCloser) error {
 	copy(buf[58:], "`\n")
 
 	out.Write(buf)
-	out.Seek(int64(newpos), io.SeekCurrent)
+	out.Seek(int64(newpos), io.SeekStart)
 
 	return nil
 }
