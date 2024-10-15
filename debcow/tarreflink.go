@@ -92,10 +92,18 @@ func (aw *ArWriter) TarTar() error {
 	}
 
 	/* Align to 4k */
-	pos2 := int64(round4k(uint64(pos)))
-	_, err = aw.out.Write(make([]byte, pos2-pos))
-	if err != nil {
-		return err
+	pos4k := int64(round4k(uint64(pos)))
+
+	if pos4k > pos {
+		_, err = aw.out.Seek(pos4k-1, io.SeekStart)
+		if err != nil {
+			return err
+		}
+
+		_, err = aw.out.Write(make([]byte, 1))
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
