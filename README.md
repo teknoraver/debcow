@@ -1,10 +1,10 @@
-# deb2extents
+# debcow
 
-`deb2extents` is a tool to adapt a Debian package in a way which is suitable for copy-on-write instalation.
+`debcow` is a tool to adapt a Debian package in a way which is suitable for copy-on-write instalation.
 
 ## How it works
 Copy-on-write via filesystem reflinks requires the data to be aligned on the filesystem boundary, typically 4k. This is not the case for Debian packages, which are typically AR archives which contains a `data.tar.xz` archive with the actual files. This archive is compressed and not aligned.
-To have the data aligned, `deb2extents` do the following operations:
+To have the data aligned, `debcow` do the following operations:
 1. Insert a dummy file named `_data-pad` before the `data.tar` archive, to have the data.tar archive aligned.
 1. Uncompress `data.tar.xz` to have the data uncompressed on disk.
 1. Filter the `data.tar`, convert the tar archive from the GNU format to the POSIX format, and insert a comment in every file header to align the files on the filesystem boundary.
@@ -18,11 +18,11 @@ https://github.com/teknoraver/tar
 https://github.com/teknoraver/dpkg
 
 ## Sample usage and performances
-Ideally during the download phase, `apt` will pipe the downloaded packages to `deb2extents`, so the package is transcoded with no extra delay.
+Ideally during the download phase, `apt` will pipe the downloaded packages to `debcow`, so the package is transcoded with no extra delay.
 The transcoded package is still compatible with standard dpkg, so it can be installed even with Debian stock binaries.
 If the system has the custom `tar` and `dpkg` binaries, the alignd package will be extracted by using filesystem reflinks, which is much faster than the standard extraction:
 ```
-$ deb2extents <linux-image-6.11.2-arm64_6.11.2-1_arm64.deb >linux-image-6.11.2-arm64_6.11.2-1_arm64_cow.deb
+$ debcow <linux-image-6.11.2-arm64_6.11.2-1_arm64.deb >linux-image-6.11.2-arm64_6.11.2-1_arm64_cow.deb
 oldpos: 135108, endpos: 185692160
 Decompressed size changed from 90266468 to 185556992
 
