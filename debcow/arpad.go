@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 	"strconv"
 
 	"github.com/DataDog/zstd"
@@ -48,13 +47,10 @@ func (aw *ArWriter) Close() error {
 		return err
 	}
 
-	fmt.Fprintf(os.Stderr, "oldpos: %d, endpos: %d\n", aw.pos, endpos)
-
 	decsize := endpos - aw.pos - 60
 	if decsize != aw.oldsize {
 		var newsizestr string
 		newsizestr = fmt.Sprintf("%-10d", decsize)
-		fmt.Fprintf(os.Stderr, "Decompressed size changed from %d to %d\n", aw.oldsize, decsize)
 		aw.out.Seek(aw.pos+48, io.SeekStart)
 		_, err = aw.out.Write([]byte(newsizestr))
 		if err != nil {
