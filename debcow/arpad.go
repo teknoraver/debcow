@@ -78,7 +78,7 @@ func (aw *ArWriter) addPadding(out WriteSeekCloser) error {
 		return err
 	}
 
-	if (pos + 60) % 4096 == 0 {
+	if (pos+60)%4096 == 0 {
 		if aw.verbose {
 			fmt.Fprintln(os.Stderr, "No padding needed")
 		}
@@ -86,8 +86,8 @@ func (aw *ArWriter) addPadding(out WriteSeekCloser) error {
 	}
 
 	/* calculate the next 4k boundary, and subtract 60 bytes for the header */
-	newpos := round4k(uint64(pos)+60) - 60
-	size := newpos - uint64(pos) - 60
+	newpos := round4k(pos+60) - 60
+	size := newpos - pos - 60
 
 	buf := make([]byte, 60)
 	copy(buf, "_data-pad       ")
@@ -103,12 +103,12 @@ func (aw *ArWriter) addPadding(out WriteSeekCloser) error {
 	}
 
 	out.Write(buf)
-	out.Seek(int64(newpos), io.SeekStart)
+	out.Seek(newpos, io.SeekStart)
 
 	return nil
 }
 
-func (aw *ArWriter) handleDataTar(algo string, in io.Reader, out WriteSeekCloser, buf []byte, size uint64) error {
+func (aw *ArWriter) handleDataTar(algo string, in io.Reader, out WriteSeekCloser, buf []byte, size int64) error {
 	aw.addPadding(out)
 
 	if algo != "" {
@@ -183,7 +183,7 @@ func ArPadder(in io.Reader, out WriteSeekCloser, verbose bool) (*ArWriter, error
 
 		name := stripSpaces(buf[:16])
 		sizeStr := stripSpaces(buf[48:58])
-		size, err := strconv.ParseUint(sizeStr, 10, 64)
+		size, err := strconv.ParseInt(sizeStr, 10, 64)
 
 		if verbose {
 			pos, err := out.Seek(0, io.SeekCurrent)
@@ -198,7 +198,7 @@ func ArPadder(in io.Reader, out WriteSeekCloser, verbose bool) (*ArWriter, error
 			aw := ArWriter{
 				verbose: verbose,
 				out:     out,
-				oldsize: int64(size),
+				oldsize: size,
 			}
 
 			err = aw.handleDataTar(name[8:], in, out, buf, size)
@@ -213,7 +213,7 @@ func ArPadder(in io.Reader, out WriteSeekCloser, verbose bool) (*ArWriter, error
 			return nil, err
 		}
 
-		io.CopyN(out, in, int64(size))
+		io.CopyN(out, in, size)
 		if size%2 != 0 {
 			in.Read(buf[:1])
 			out.Write(buf[:1])

@@ -7,15 +7,15 @@ import (
 
 var spaces = make([]byte, 4096)
 
-func round512(Size uint64) uint64 {
+func round512(Size int64) int64 {
 	return ((Size - 1) | 0x1ff) + 1
 }
 
-func round4k(Size uint64) uint64 {
+func round4k(Size int64) int64 {
 	return ((Size - 1) | 0xfff) + 1
 }
 
-func addReflink(tw *tar.Writer, tr *tar.Reader, header *tar.Header, pos uint64) error {
+func addReflink(tw *tar.Writer, tr *tar.Reader, header *tar.Header, pos int64) error {
 	/* Headers are 512 bytes aligned */
 	pos = round512(pos)
 
@@ -24,7 +24,7 @@ func addReflink(tw *tar.Writer, tr *tar.Reader, header *tar.Header, pos uint64) 
 
 	/* "1234 comment=\n" is 14 bytes long */
 	next := round4k(pos + 14)
-	rem := int64(next - pos - 14)
+	rem := next - pos - 14
 
 	/* The tar file format can store up to 100 bytes of filename in the header
 	 * itself. If the filename is longer, it is stored in a PAX header.
@@ -75,7 +75,7 @@ func (aw *ArWriter) TarTar() error {
 				return err
 			}
 
-			err = addReflink(tw, tr, header, uint64(pos))
+			err = addReflink(tw, tr, header, pos)
 			if err != nil {
 				return err
 			}
@@ -96,7 +96,7 @@ func (aw *ArWriter) TarTar() error {
 	}
 
 	/* Align to 4k */
-	pos4k := int64(round4k(uint64(pos)))
+	pos4k := round4k(pos)
 
 	if pos4k > pos {
 		_, err = aw.out.Seek(pos4k-1, io.SeekStart)
