@@ -31,11 +31,10 @@ type WriteSeekCloser interface {
 type ArWriter struct {
 	io.WriteCloser
 
+	in      io.Reader
 	out     WriteSeekCloser
 	pos     int64
 	oldsize int64
-	format  string
-	in      io.Reader
 	verbose bool
 }
 
