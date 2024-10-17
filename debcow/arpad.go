@@ -89,6 +89,10 @@ func (aw *ArWriter) addPadding(out WriteSeekCloser) error {
 	newpos := round4k(pos+60) - 60
 	size := newpos - pos - 60
 
+	if size < 0 {
+		size += 4096
+	}
+
 	buf := make([]byte, 60)
 	copy(buf, "_data-pad       ")
 	copy(buf[16:], "0            ")
