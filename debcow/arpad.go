@@ -55,7 +55,11 @@ func (aw *ArWriter) Close() error {
 			fmt.Fprintf(os.Stderr, "Data size changed from %d to %d bytes, adjusting header\n", aw.oldsize, decsize)
 		}
 
-		aw.out.Seek(aw.pos-60+48, io.SeekStart)
+		_, err = aw.out.Seek(aw.pos-60+48, io.SeekStart)
+		if err != nil {
+			return err
+		}
+
 		_, err = fmt.Fprintf(aw.out, "%-10d", decsize)
 		if err != nil {
 			return err
@@ -102,8 +106,15 @@ func (aw *ArWriter) addPadding() error {
 		fmt.Fprintf(os.Stderr, "Adding %d bytes _data-pad file\n", size)
 	}
 
-	aw.out.Write(buf)
-	aw.out.Seek(newpos, io.SeekStart)
+	_, err = aw.out.Write(buf)
+	if err != nil {
+		return err
+	}
+
+	_, err = aw.out.Seek(newpos, io.SeekStart)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -183,6 +194,9 @@ func ArPadder(in io.Reader, out WriteSeekCloser, verbose bool) (*ArWriter, error
 		name := stripSpaces(buf[:16])
 		sizeStr := stripSpaces(buf[48:58])
 		size, err := strconv.ParseInt(sizeStr, 10, 64)
+		if err != nil {
+			return nil, err
+		}
 
 		if verbose {
 			pos, err := out.Seek(0, io.SeekCurrent)
@@ -205,6 +219,7 @@ func ArPadder(in io.Reader, out WriteSeekCloser, verbose bool) (*ArWriter, error
 			if err != nil {
 				return nil, err
 			}
+
 			return &aw, nil
 		}
 
@@ -213,10 +228,21 @@ func ArPadder(in io.Reader, out WriteSeekCloser, verbose bool) (*ArWriter, error
 			return nil, err
 		}
 
-		io.CopyN(out, in, size)
+		_, err = io.CopyN(out, in, size)
+		if err != nil {
+			return nil, err
+		}
+
 		if size%2 != 0 {
-			in.Read(buf[:1])
-			out.Write(buf[:1])
+			_, err = in.Read(buf[:1])
+			if err != nil {
+				return nil, err
+			}
+
+			_, err = out.Write(buf[:1])
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 }

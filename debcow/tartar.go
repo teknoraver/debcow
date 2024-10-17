@@ -89,7 +89,10 @@ func (aw *ArWriter) TarTar() error {
 		}
 	}
 
-	tw.Flush()
+	err := tw.Flush()
+	if err != nil {
+		return err
+	}
 
 	pos, err := aw.out.Seek(0, io.SeekEnd)
 	if err != nil {
@@ -102,7 +105,7 @@ func (aw *ArWriter) TarTar() error {
 	if pos4k > pos {
 		/* If output is a regular file, i.e. not a pipe, we can use ftruncate */
 		if file, ok := aw.out.(*os.File); ok {
-			err := file.Truncate(pos4k)
+			err = file.Truncate(pos4k)
 			if err != nil {
 				return err
 			}
