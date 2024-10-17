@@ -76,6 +76,13 @@ func (aw *ArWriter) addPadding(out WriteSeekCloser) error {
 		return err
 	}
 
+	if (pos + 60) % 4096 == 0 {
+		if aw.verbose {
+			fmt.Fprintln(os.Stderr, "No padding needed")
+		}
+		return nil
+	}
+
 	newpos := round4k(uint64(pos)+60) - 60
 	size := newpos - uint64(pos) - 60
 
