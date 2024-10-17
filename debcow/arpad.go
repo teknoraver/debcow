@@ -1,6 +1,7 @@
 package debcow
 
 import (
+	"compress/gzip"
 	"errors"
 	"fmt"
 	"io"
@@ -113,6 +114,11 @@ func (aw *ArWriter) handleDataTar(algo string, in io.Reader, out WriteSeekCloser
 		aw.in = in
 	case ".xz":
 		aw.in = xz.NewReader(in)
+	case ".gz":
+		aw.in, err = gzip.NewReader(in)
+		if err != nil {
+			return err
+		}
 	default:
 		return errors.New("Unknown algorithm: " + algo[1:])
 	}
