@@ -71,9 +71,9 @@ func (aw *ArWriter) Close() error {
 	return nil
 }
 
-func (aw *ArWriter) addPadding(out WriteSeekCloser) error {
+func (aw *ArWriter) addPadding() error {
 	/* pos here is the end of the control file */
-	pos, err := out.Seek(0, io.SeekCurrent)
+	pos, err := aw.out.Seek(0, io.SeekCurrent)
 	if err != nil {
 		return err
 	}
@@ -106,14 +106,14 @@ func (aw *ArWriter) addPadding(out WriteSeekCloser) error {
 		fmt.Fprintf(os.Stderr, "Adding %d bytes _data-pad file\n", size)
 	}
 
-	out.Write(buf)
-	out.Seek(newpos, io.SeekStart)
+	aw.out.Write(buf)
+	aw.out.Seek(newpos, io.SeekStart)
 
 	return nil
 }
 
-func (aw *ArWriter) handleDataTar(algo string, in io.Reader, out WriteSeekCloser, buf []byte, size int64) error {
-	aw.addPadding(out)
+func (aw *ArWriter) handleDataTar(algo string, buf []byte, size int64) error {
+	aw.addPadding()
 
 	if algo != "" {
 		copy(buf, "data.tar        ")
@@ -122,13 +122,13 @@ func (aw *ArWriter) handleDataTar(algo string, in io.Reader, out WriteSeekCloser
 		}
 	}
 
-	_, err := out.Write(buf[:60])
+	_, err := aw.out.Write(buf[:60])
 	if err != nil {
 		return err
 	}
 
 	/* pos here is the start of the data.tar file */
-	startpos, err := out.Seek(0, io.SeekCurrent)
+	startpos, err := aw.out.Seek(0, io.SeekCurrent)
 	if err != nil {
 		return err
 	}
@@ -141,13 +141,12 @@ func (aw *ArWriter) handleDataTar(algo string, in io.Reader, out WriteSeekCloser
 
 	switch algo {
 	case "":
-		aw.in = in
 	case ".zst":
-		aw.in = zstd.NewReader(in)
+		aw.in = zstd.NewReader(aw.in)
 	case ".xz":
-		aw.in = xz.NewReader(in)
+		aw.in = xz.NewReader(aw.in)
 	case ".gz":
-		aw.in, err = gzip.NewReader(in)
+		aw.in, err = gzip.NewReader(aw.in)
 		if err != nil {
 			return err
 		}
@@ -201,11 +200,12 @@ func ArPadder(in io.Reader, out WriteSeekCloser, verbose bool) (*ArWriter, error
 		if len(name) >= 8 && name[:8] == "data.tar" {
 			aw := ArWriter{
 				verbose: verbose,
+				in:      in,
 				out:     out,
 				oldsize: size,
 			}
 
-			err = aw.handleDataTar(name[8:], in, out, buf, size)
+			err = aw.handleDataTar(name[8:], buf, size)
 			if err != nil {
 				return nil, err
 			}
