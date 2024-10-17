@@ -1,6 +1,7 @@
 package debcow
 
 import (
+	"bytes"
 	"compress/gzip"
 	"errors"
 	"fmt"
@@ -13,11 +14,9 @@ import (
 )
 
 func stripSpaces(buf []byte) string {
-	var i int
-	for i = 0; i < len(buf); i++ {
-		if buf[i] == ' ' || buf[i] == 0 {
-			break
-		}
+	i := bytes.IndexByte(buf, ' ')
+	if i == -1 {
+		i = len(buf)
 	}
 
 	return string(buf[:i])
@@ -56,10 +55,8 @@ func (aw *ArWriter) Close() error {
 			fmt.Fprintf(os.Stderr, "Data size changed from %d to %d bytes, adjusting header\n", aw.oldsize, decsize)
 		}
 
-		var newsizestr string
-		newsizestr = fmt.Sprintf("%-10d", decsize)
 		aw.out.Seek(aw.pos-60+48, io.SeekStart)
-		_, err = aw.out.Write([]byte(newsizestr))
+		_, err = fmt.Fprintf(aw.out, "%-10d", decsize)
 		if err != nil {
 			return err
 		}
