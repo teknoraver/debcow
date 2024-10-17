@@ -6,7 +6,7 @@ import (
 	"os"
 )
 
-var spaces = make([]byte, 4096)
+var spaces string
 
 func round512(Size int64) int64 {
 	return ((Size - 1) | 0x1ff) + 1
@@ -40,7 +40,7 @@ func addReflink(tw *tar.Writer, tr *tar.Reader, header *tar.Header, pos int64) e
 	}
 
 	header.PAXRecords = make(map[string]string)
-	header.PAXRecords["comment"] = string(spaces[:rem])
+	header.PAXRecords["comment"] = spaces[:rem]
 
 	err := tw.WriteHeader(header)
 	if err != nil {
@@ -59,8 +59,12 @@ func (aw *ArWriter) TarTar() error {
 	tr := tar.NewReader(aw.in)
 	tw := tar.NewWriter(aw.out)
 
-	for i := range spaces {
-		spaces[i] = ' '
+	if spaces == "" {
+		spacesbuf := make([]byte, 4096)
+		for i := range spacesbuf {
+			spacesbuf[i] = ' '
+		}
+		spaces = string(spacesbuf)
 	}
 
 	for header, err := tr.Next(); err != io.EOF; header, err = tr.Next() {
