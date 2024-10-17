@@ -103,6 +103,9 @@ func (aw *ArWriter) TarTar() error {
 		return err
 	}
 
+	/* A tar file ends with two empty blocks */
+	pos += 1024
+
 	/* Align to 4k */
 	pos4k := round4k(pos)
 
