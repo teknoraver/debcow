@@ -26,6 +26,10 @@ func addReflink(tw *tar.Writer, tr *tar.Reader, header *tar.Header, pos uint64) 
 	next := round4k(pos + 14)
 	rem := int64(next - pos - 14)
 
+	/* The tar file format can store up to 100 bytes of filename in the header
+	 * itself. If the filename is longer, it is stored in a PAX header.
+	 * We need to account for the PAX header here, set the comment to end one
+	 * byte after the sector boundary, so we have ~500 bytes for the filename */
 	if len(header.Name) > 100 {
 		rem -= 511
 	}

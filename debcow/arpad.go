@@ -49,16 +49,17 @@ func (aw *ArWriter) Close() error {
 		return err
 	}
 
-	decsize := endpos - aw.pos - 60
+	/* calculate the decompressed size subtracting the end of file
+	 * position from the start of the data.tar file */
+	decsize := endpos - aw.pos
 	if decsize != aw.oldsize {
-
 		if aw.verbose {
 			fmt.Fprintf(os.Stderr, "Data size changed from %d to %d bytes, adjusting header\n", aw.oldsize, decsize)
 		}
 
 		var newsizestr string
 		newsizestr = fmt.Sprintf("%-10d", decsize)
-		aw.out.Seek(aw.pos+48, io.SeekStart)
+		aw.out.Seek(aw.pos-60+48, io.SeekStart)
 		_, err = aw.out.Write([]byte(newsizestr))
 		if err != nil {
 			return err
@@ -71,6 +72,7 @@ func (aw *ArWriter) Close() error {
 }
 
 func (aw *ArWriter) addPadding(out WriteSeekCloser) error {
+	/* pos here is the end of the control file */
 	pos, err := out.Seek(0, io.SeekCurrent)
 	if err != nil {
 		return err
@@ -83,6 +85,7 @@ func (aw *ArWriter) addPadding(out WriteSeekCloser) error {
 		return nil
 	}
 
+	/* calculate the next 4k boundary, and subtract 60 bytes for the header */
 	newpos := round4k(uint64(pos)+60) - 60
 	size := newpos - uint64(pos) - 60
 
@@ -108,17 +111,6 @@ func (aw *ArWriter) addPadding(out WriteSeekCloser) error {
 func (aw *ArWriter) handleDataTar(algo string, in io.Reader, out WriteSeekCloser, buf []byte, size uint64) error {
 	aw.addPadding(out)
 
-	startpos, err := out.Seek(0, io.SeekCurrent)
-	if err != nil {
-		return err
-	}
-
-	if aw.verbose {
-		fmt.Fprintf(os.Stderr, "data.tar new offset is 0x%x\n", startpos+60)
-	}
-
-	aw.pos = startpos
-
 	if algo != "" {
 		copy(buf, "data.tar        ")
 		if aw.verbose {
@@ -126,10 +118,22 @@ func (aw *ArWriter) handleDataTar(algo string, in io.Reader, out WriteSeekCloser
 		}
 	}
 
-	_, err = out.Write(buf[:60])
+	_, err := out.Write(buf[:60])
 	if err != nil {
 		return err
 	}
+
+	/* pos here is the start of the data.tar file */
+	startpos, err := out.Seek(0, io.SeekCurrent)
+	if err != nil {
+		return err
+	}
+
+	if aw.verbose {
+		fmt.Fprintf(os.Stderr, "data.tar new offset is 0x%x\n", startpos)
+	}
+
+	aw.pos = startpos
 
 	switch algo {
 	case "":
