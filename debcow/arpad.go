@@ -8,6 +8,7 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/DataDog/zstd"
 	"github.com/jamespfennell/xz"
 )
 
@@ -112,6 +113,8 @@ func (aw *ArWriter) handleDataTar(algo string, in io.Reader, out WriteSeekCloser
 	switch algo {
 	case "":
 		aw.in = in
+	case ".zst":
+		aw.in = zstd.NewReader(in)
 	case ".xz":
 		aw.in = xz.NewReader(in)
 	case ".gz":
