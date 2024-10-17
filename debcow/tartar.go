@@ -3,6 +3,7 @@ package debcow
 import (
 	"archive/tar"
 	"io"
+	"os"
 )
 
 var spaces = make([]byte, 4096)
@@ -99,14 +100,22 @@ func (aw *ArWriter) TarTar() error {
 	pos4k := round4k(pos)
 
 	if pos4k > pos {
-		_, err = aw.out.Seek(pos4k-1, io.SeekStart)
-		if err != nil {
-			return err
-		}
+		/* If output is a regular file, i.e. not a pipe, we can use ftruncate */
+		if file, ok := aw.out.(*os.File); ok {
+			err := file.Truncate(pos4k)
+			if err != nil {
+				return err
+			}
+		} else {
+			_, err = aw.out.Seek(pos4k-1, io.SeekStart)
+			if err != nil {
+				return err
+			}
 
-		_, err = aw.out.Write(make([]byte, 1))
-		if err != nil {
-			return err
+			_, err = aw.out.Write(make([]byte, 1))
+			if err != nil {
+				return err
+			}
 		}
 	}
 
