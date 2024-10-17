@@ -1,13 +1,17 @@
 package main
 
 import (
+	"flag"
 	"os"
 
 	"github.com/teknoraver/debcow/debcow"
 )
 
 func main() {
-	aw, err := debcow.ArPadder(os.Stdin, os.Stdout)
+	verbose := flag.Bool("v", false, "verbose")
+	flag.Parse()
+
+	aw, err := debcow.ArPadder(os.Stdin, os.Stdout, *verbose)
 	if err != nil {
 		panic(err)
 	}

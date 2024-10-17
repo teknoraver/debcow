@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"strconv"
 
 	"github.com/DataDog/zstd"
@@ -35,6 +36,7 @@ type ArWriter struct {
 	oldsize int64
 	format  string
 	in      io.Reader
+	verbose bool
 }
 
 func (aw *ArWriter) Write(p []byte) (n int, err error) {
@@ -49,6 +51,11 @@ func (aw *ArWriter) Close() error {
 
 	decsize := endpos - aw.pos - 60
 	if decsize != aw.oldsize {
+
+		if aw.verbose {
+			fmt.Fprintf(os.Stderr, "Data size changed from %d to %d bytes, adjusting header\n", aw.oldsize, decsize)
+		}
+
 		var newsizestr string
 		newsizestr = fmt.Sprintf("%-10d", decsize)
 		aw.out.Seek(aw.pos+48, io.SeekStart)
@@ -63,7 +70,7 @@ func (aw *ArWriter) Close() error {
 	return nil
 }
 
-func addPadding(out WriteSeekCloser) error {
+func (aw *ArWriter) addPadding(out WriteSeekCloser) error {
 	pos, err := out.Seek(0, io.SeekCurrent)
 	if err != nil {
 		return err
@@ -81,6 +88,10 @@ func addPadding(out WriteSeekCloser) error {
 	copy(buf[48:], fmt.Sprintf("%-10d", size))
 	copy(buf[58:], "`\n")
 
+	if aw.verbose {
+		fmt.Fprintf(os.Stderr, "Adding %d bytes _data-pad file\n", size)
+	}
+
 	out.Write(buf)
 	out.Seek(int64(newpos), io.SeekStart)
 
@@ -88,17 +99,24 @@ func addPadding(out WriteSeekCloser) error {
 }
 
 func (aw *ArWriter) handleDataTar(algo string, in io.Reader, out WriteSeekCloser, buf []byte, size uint64) error {
-	addPadding(out)
+	aw.addPadding(out)
 
 	startpos, err := out.Seek(0, io.SeekCurrent)
 	if err != nil {
 		return err
 	}
 
+	if aw.verbose {
+		fmt.Fprintf(os.Stderr, "data.tar new offset is 0x%x\n", startpos+60)
+	}
+
 	aw.pos = startpos
 
 	if algo != "" {
 		copy(buf, "data.tar        ")
+		if aw.verbose {
+			fmt.Fprintln(os.Stderr, "Decompressing", algo[1:], "archive")
+		}
 	}
 
 	_, err = out.Write(buf[:60])
@@ -125,7 +143,7 @@ func (aw *ArWriter) handleDataTar(algo string, in io.Reader, out WriteSeekCloser
 	return nil
 }
 
-func ArPadder(in io.Reader, out WriteSeekCloser) (*ArWriter, error) {
+func ArPadder(in io.Reader, out WriteSeekCloser, verbose bool) (*ArWriter, error) {
 	buf := make([]byte, 1024)
 
 	_, err := in.Read(buf[:8])
@@ -135,6 +153,10 @@ func ArPadder(in io.Reader, out WriteSeekCloser) (*ArWriter, error) {
 
 	if string(buf[:8]) != "!<arch>\n" {
 		return nil, errors.New("Not an ar file")
+	}
+
+	if verbose {
+		fmt.Fprintln(os.Stderr, "Transcoding deb package")
 	}
 
 	_, err = out.Write(buf[:8])
@@ -152,11 +174,21 @@ func ArPadder(in io.Reader, out WriteSeekCloser) (*ArWriter, error) {
 		sizeStr := stripSpaces(buf[48:58])
 		size, err := strconv.ParseUint(sizeStr, 10, 64)
 
-		if len(name) >= 8 && name[:8] == "data.tar" {
-			var aw ArWriter
+		if verbose {
+			pos, err := out.Seek(0, io.SeekCurrent)
+			if err != nil {
+				return nil, err
+			}
 
-			aw.out = out
-			aw.oldsize = int64(size)
+			fmt.Fprintf(os.Stderr, "%s offset 0x%x size %d\n", name, pos+60, size)
+		}
+
+		if len(name) >= 8 && name[:8] == "data.tar" {
+			aw := ArWriter{
+				verbose: verbose,
+				out:     out,
+				oldsize: int64(size),
+			}
 
 			err = aw.handleDataTar(name[8:], in, out, buf, size)
 			if err != nil {
