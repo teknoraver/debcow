@@ -113,6 +113,8 @@ func (aw *ArWriter) handleDataTar(algo string, in io.Reader, out WriteSeekCloser
 		aw.in = in
 	case ".xz":
 		aw.in = xz.NewReader(in)
+	default:
+		return errors.New("Unknown algorithm: " + algo[1:])
 	}
 
 	return nil
