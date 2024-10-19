@@ -16,7 +16,7 @@ func round4k(Size int64) int64 {
 	return ((Size - 1) | 0xfff) + 1
 }
 
-func addReflink(tw *tar.Writer, tr *tar.Reader, header *tar.Header, pos int64) error {
+func addPadding(tw *tar.Writer, tr *tar.Reader, header *tar.Header, pos int64) error {
 	/* Headers are 512 bytes aligned */
 	pos = round512(pos)
 
@@ -80,7 +80,7 @@ func (aw *ArWriter) TarTar() error {
 				return err
 			}
 
-			err = addReflink(tw, tr, header, pos)
+			err = addPadding(tw, tr, header, pos)
 			if err != nil {
 				return err
 			}
