@@ -9,11 +9,11 @@ import (
 var spaces string
 
 func round512(Size int64) int64 {
-	return ((Size - 1) | 0x1ff) + 1
+	return (Size + 511) & ^511
 }
 
 func round4k(Size int64) int64 {
-	return ((Size - 1) | 0xfff) + 1
+	return (Size + 4095) & ^4095
 }
 
 func addPadding(tw *tar.Writer, tr *tar.Reader, header *tar.Header, pos int64) error {
