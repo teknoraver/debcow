@@ -91,6 +91,7 @@ func (aw *ArWriter) addPadding() error {
 
 	if size < 0 {
 		size += 4096
+		newpos += 4096
 	}
 
 	buf := make([]byte, 60)
